@@ -372,7 +372,7 @@ file_key = f"uploaded_file_{k}"
 
 hours = st.text_input("Please insert **Hours Worked**", placeholder="Example: 148.13", key=hours_key)
 
-st.markdown("<div style='height: 24px;'></div>", unsafe_allow_html=True)
+st.markdown("<div style='height: 48px;'></div>", unsafe_allow_html=True)
 
 uploaded = st.file_uploader(
     'Upload the Excel (.xlsx) file exported from "Staff Service Detail Report" from SmartCare',
