@@ -373,7 +373,7 @@ file_key = f"uploaded_file_{k}"
 
 hours = st.text_input("Hours Worked", placeholder="Example: 148.13", key=hours_key)
 uploaded = st.file_uploader(
-    "Upload StaffServiceDetail Excel (.xlsx)",
+    "Upload the Excel (.xlsx) file exported from "Staff Service Detail Report" from SmartCare",
     type=["xlsx"],
     key=file_key
 )
