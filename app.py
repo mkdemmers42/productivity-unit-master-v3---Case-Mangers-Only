@@ -113,7 +113,7 @@ def canonicalize_headers(cols: List[Any]) -> Dict[Any, str]:
 
 def unit_grid(minutes: float) -> int:
     """
-    MASTER v3 grid. Ceiling at 16 for >248.
+    MASTER v3 unit grid. Ceiling at 16 for >248.
     """
     if minutes is None or (isinstance(minutes, float) and math.isnan(minutes)):
         m = 0.0
@@ -173,10 +173,9 @@ def compute_pass(
     Header always on Row 11 (1-indexed) => header=10.
     Hidden math: return results only; optionally record audit details.
     """
-    # Hours -> minutes
     minutes_worked_raw = hours_worked * 60.0
 
-    # Load
+    # Load (header row locked to Row 11)
     bio = io.BytesIO(file_bytes)
     df = pd.read_excel(bio, header=10, dtype=object)
 
@@ -216,6 +215,7 @@ def compute_pass(
         df.loc[df["Procedure Code Name"].isin(BILLABLE_FACE_TO_FACE_CODES), "Face-to-Face Time"].sum()
     )
 
+    # Units billed: apply grid per entry on billable rows; sum
     billable_ftf = df.loc[df["Procedure Code Name"].isin(BILLABLE_FACE_TO_FACE_CODES), "Face-to-Face Time"]
     units_billed = int(billable_ftf.apply(unit_grid).sum())
 
@@ -248,6 +248,7 @@ def compute_pass(
         travel_pct=round_pct(travel_pct),
     )
 
+    # Audit (saved only for download, not displayed)
     if audit is not None:
         audit["header_row_1_indexed"] = 11
         audit["original_columns"] = [str(c) for c in original_cols]
@@ -310,12 +311,49 @@ def compare_results(p1: Results, p2: Results) -> Tuple[bool, List[str]]:
     return (len(mismatches) == 0, mismatches)
 
 
+def print_final(res: Results) -> None:
+    st.success("VERIFICATION PASSED ✅")
+
+    st.write(f"**Hours Worked:** {res.hours_worked}")
+    st.write(f"**Minutes Worked:** {res.minutes_worked}")
+
+    st.write("")
+    st.write(f"**Minutes Billed:** {res.minutes_billed}")
+    st.write(f"**Billable Minutes Percentage:** {res.billable_minutes_pct}%")
+
+    st.write("")
+    st.write(f"**Units Billed:** {res.units_billed}")
+    st.write(f"**Billable Units Percentage:** {res.billable_units_pct}%")
+
+    st.write("")
+    st.write(f"**Non-Billable Total:** {res.non_billable_total}")
+    st.write(f"**Non-Billable Percentage:** {res.non_billable_pct}%")
+
+    st.write("")
+    st.write(f"**Documentation Time Total:** {res.documentation_total}")
+    st.write(f"**Documentation Percentage:** {res.documentation_pct}%")
+
+    st.write("")
+    st.write(f"**Travel Time Total:** {res.travel_total}")
+    st.write(f"**Travel Percentage:** {res.travel_pct}%")
+
+
 # -----------------------------
 # Streamlit UI (Hidden Math)
 # -----------------------------
-st.set_page_config(page_title="Mike's Productivity/Unit Machine (v3)", layout="centered")
-st.title("Mike's Productivity/Unit Machine v3")
-st.caption("Web app: upload StaffServiceDetail, enter Hours Worked, get verified final results. Hidden math by design.")
+st.set_page_config(page_title="Mike's Productivity/Unit Machine", layout="centered")
+st.title("Mike's Productivity/Unit Machine (v3)")
+st.caption("Upload StaffServiceDetail, enter Hours Worked, click Run. Hidden math by design. Verification enforced.")
+
+
+# Session init for results storage
+if "last_result" not in st.session_state:
+    st.session_state["last_result"] = None
+if "last_audit_payload" not in st.session_state:
+    st.session_state["last_audit_payload"] = None
+if "last_error" not in st.session_state:
+    st.session_state["last_error"] = None
+
 
 hours = st.text_input("Hours Worked", placeholder="Example: 148.13", key="hours")
 uploaded = st.file_uploader(
@@ -324,42 +362,42 @@ uploaded = st.file_uploader(
     key="uploaded_file"
 )
 
-
-run = st.button("Run Calculation", type="primary")
+col_run, col_reset = st.columns([1, 1])
+with col_run:
+    run = st.button("Run Calculation", type="primary")
+with col_reset:
+    reset = st.button("Run Another Staff Member")
 
 st.divider()
 
-def print_final(res: Results) -> None:
-    st.success("VERIFICATION PASSED")
-    st.write(f"**Hours Worked:** {res.hours_worked}")
-    st.write(f"**Minutes Worked:** {res.minutes_worked}")
-    st.write("")
-    st.write(f"**Minutes Billed:** {res.minutes_billed}")
-    st.write(f"**Billable Minutes Percentage:** {res.billable_minutes_pct}%")
-    st.write("")
-    st.write(f"**Units Billed:** {res.units_billed}")
-    st.write(f"**Billable Units Percentage:** {res.billable_units_pct}%")
-    st.write("")
-    st.write(f"**Non-Billable Total:** {res.non_billable_total}")
-    st.write(f"**Non-Billable Percentage:** {res.non_billable_pct}%")
-    st.write("")
-    st.write(f"**Documentation Time Total:** {res.documentation_total}")
-    st.write(f"**Documentation Percentage:** {res.documentation_pct}%")
-    st.write("")
-    st.write(f"**Travel Time Total:** {res.travel_total}")
-    st.write(f"**Travel Percentage:** {res.travel_pct}%")
+
+def do_reset() -> None:
+    st.session_state.pop("hours", None)
+    st.session_state.pop("uploaded_file", None)
+    st.session_state["last_result"] = None
+    st.session_state["last_audit_payload"] = None
+    st.session_state["last_error"] = None
+    st.rerun()
+
+
+if reset:
+    do_reset()
 
 
 if run:
+    st.session_state["last_error"] = None
+
     # Hours validation (failsafe)
     try:
-        hours_worked = float(hours.strip())
+        hours_worked = float((hours or "").strip())
     except Exception:
-        st.error("Please enter Hours Worked as a number only (example: 128.4).")
+        st.session_state["last_error"] = "Please enter Hours Worked as a number only (example: 128.4)."
         st.stop()
 
     if uploaded is None:
-        st.error("Please upload the Excel spreadsheet containing staff's 'Billed' and 'Non-Billable' numbers.")
+        st.session_state["last_error"] = (
+            "Please upload the Excel spreadsheet containing staff's 'Billed' and 'Non-Billable' numbers."
+        )
         st.stop()
 
     file_bytes = uploaded.getvalue()
@@ -369,10 +407,10 @@ if run:
     try:
         pass1 = compute_pass(hours_worked, file_bytes, audit=audit1)
     except ValueError as e:
-        st.error(str(e))
+        st.session_state["last_error"] = str(e)
         st.stop()
     except Exception as e:
-        st.error(f"ERROR LOADING/PROCESSING FILE: {e}")
+        st.session_state["last_error"] = f"ERROR LOADING/PROCESSING FILE: {e}"
         st.stop()
 
     # PASS 2 (verification recompute from scratch)
@@ -380,25 +418,17 @@ if run:
     try:
         pass2 = compute_pass(hours_worked, file_bytes, audit=audit2)
     except Exception as e:
-        st.error(f"VERIFICATION FAILED — RESULTS NOT TRUSTWORTHY\n\nReason: {e}")
+        st.session_state["last_error"] = f"VERIFICATION FAILED — RESULTS NOT TRUSTWORTHY\n\nReason: {e}"
         st.stop()
 
     ok, mismatches = compare_results(pass1, pass2)
     if not ok:
-        st.error("VERIFICATION FAILED — RESULTS NOT TRUSTWORTHY")
-        st.write("Metric(s) mismatched:")
-        for m in mismatches:
-            st.write(m)
+        st.session_state["last_error"] = "VERIFICATION FAILED — RESULTS NOT TRUSTWORTHY\n\nMetric(s) mismatched:\n" + "\n".join(mismatches)
         st.stop()
 
-        # Final output only
-    print_final(pass1)
+    # Store results for display
+    st.session_state["last_result"] = pass1
 
-    st.session_state["hours"] = ""
-    st.session_state["uploaded_file"] = None
-
-
-    # Optional audit download (hidden math stays off-screen)
     payload = {
         "pass1": audit1,
         "pass2": audit2,
@@ -417,9 +447,26 @@ if run:
             "travel_pct": pass1.travel_pct,
         },
     }
-    st.download_button(
-        "Download Audit JSON (internal math, not displayed)",
-        data=json.dumps(payload, indent=2).encode("utf-8"),
-        file_name="productivity_audit.json",
-        mime="application/json",
-    )
+    st.session_state["last_audit_payload"] = payload
+    st.rerun()
+
+
+# -----------------------------
+# Display section (results persist until reset)
+# -----------------------------
+if st.session_state["last_error"]:
+    st.error(st.session_state["last_error"])
+
+if st.session_state["last_result"] is not None:
+    print_final(st.session_state["last_result"])
+
+    if st.session_state["last_audit_payload"] is not None:
+        st.download_button(
+            "Download Audit JSON (internal math, not displayed)",
+            data=json.dumps(st.session_state["last_audit_payload"], indent=2).encode("utf-8"),
+            file_name="productivity_audit.json",
+            mime="application/json",
+        )
+
+    st.write("")
+    st.info("Ready for the next staff member? Click **Run Another Staff Member**.")
