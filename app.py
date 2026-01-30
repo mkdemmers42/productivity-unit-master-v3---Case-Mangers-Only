@@ -380,7 +380,7 @@ uploaded = st.file_uploader(
 
 col_run, col_reset = st.columns([1, 1])
 with col_run:
-    run = st.button("Run Calculation", type="primary")
+    run = st.button("Calculate Productivity", type="primary")
 with col_reset:
     reset = st.button("Run Another Staff Member", on_click=do_reset)
 
