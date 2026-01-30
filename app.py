@@ -373,6 +373,7 @@ file_key = f"uploaded_file_{k}"
 hours = st.text_input("Please insert **Hours Worked**", placeholder="Example: 148.13", key=hours_key)
 
 st.write("")
+
 st.write("")
 
 uploaded = st.file_uploader(
