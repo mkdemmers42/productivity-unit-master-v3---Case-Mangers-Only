@@ -317,8 +317,13 @@ st.set_page_config(page_title="Mike's Productivity/Unit Machine (v3)", layout="c
 st.title("Mike's Productivity/Unit Machine v3")
 st.caption("Web app: upload StaffServiceDetail, enter Hours Worked, get verified final results. Hidden math by design.")
 
-hours = st.text_input("Hours Worked", placeholder="Example: 148.13")
-uploaded = st.file_uploader("Upload StaffServiceDetail Excel (.xlsx)", type=["xlsx"])
+hours = st.text_input("Hours Worked", placeholder="Example: 148.13", key="hours")
+uploaded = st.file_uploader(
+    "Upload StaffServiceDetail Excel (.xlsx)",
+    type=["xlsx"],
+    key="uploaded_file"
+)
+
 
 run = st.button("Run Calculation", type="primary")
 
@@ -388,6 +393,8 @@ if run:
 
     # Final output only
     print_final(pass1)
+        st.session_state["hours"] = ""
+        st.session_state["uploaded_file"] = None
 
     # Optional audit download (hidden math stays off-screen)
     payload = {
