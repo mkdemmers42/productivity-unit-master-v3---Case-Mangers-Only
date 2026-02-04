@@ -19,6 +19,8 @@ VALID_CODES = {
     "Client Non Billable Srvc Must Document",
     "Crisis Intervention",
     "Plan Development, non-physician",
+    "Brief Contact Note",
+    "Targeted Outreach",
 }
 
 BILLABLE_FACE_TO_FACE_CODES = {
@@ -27,6 +29,8 @@ BILLABLE_FACE_TO_FACE_CODES = {
     "Psychosocial Rehabilitation Group",
     "Crisis Intervention",
     "Plan Development, non-physician",
+    "Brief Contact Note",
+    "Targeted Outreach",
 }
 
 NON_BILLABLE_FTF_CODES = {
