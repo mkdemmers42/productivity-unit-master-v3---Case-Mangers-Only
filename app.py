@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import pandas as pd
 import streamlit as st
+import plotly.express as px
 
 # -----------------------------
 # App Config (MUST be first Streamlit call)
@@ -23,7 +24,6 @@ st.set_page_config(
 def apply_red_blueprint_skin():
     st.markdown("""
     <style>
-      /* -------- Red blueprint background (subtle grid) -------- */
       .stApp {
         background-color: #0b1220;
         background-image:
@@ -35,7 +35,6 @@ def apply_red_blueprint_skin():
         background-attachment: fixed;
       }
 
-      /* -------- Sidebar (darker panel) -------- */
       section[data-testid="stSidebar"] {
         background: #091022;
         border-right: 1px solid rgba(239,68,68,0.18);
@@ -44,7 +43,6 @@ def apply_red_blueprint_skin():
         color: #e6edf3 !important;
       }
 
-      /* -------- "Metal plate" header -------- */
       .bp-header {
         padding: 18px 18px 14px 18px;
         border-radius: 18px;
@@ -65,7 +63,6 @@ def apply_red_blueprint_skin():
         color: rgba(254,202,202,0.95);
       }
 
-      /* -------- Card look for metric widgets -------- */
       div[data-testid="stMetric"] {
         background: rgba(17,26,46,0.78);
         border: 1px solid rgba(239,68,68,0.18);
@@ -73,15 +70,7 @@ def apply_red_blueprint_skin():
         padding: 14px 14px;
         box-shadow: 0 10px 24px rgba(0,0,0,0.30);
       }
-      div[data-testid="stMetricLabel"] > div {
-        opacity: 0.85;
-        letter-spacing: 0.3px;
-      }
-      div[data-testid="stMetricValue"] > div {
-        letter-spacing: 0.6px;
-      }
 
-      /* -------- Inputs as panels -------- */
       div[data-testid="stFileUploader"],
       div[data-testid="stSelectbox"],
       div[data-testid="stTextInput"],
@@ -92,7 +81,6 @@ def apply_red_blueprint_skin():
         padding: 10px 10px 6px 10px;
       }
 
-      /* -------- Buttons: rounded + glow edge -------- */
       .stButton > button {
         border-radius: 14px;
         padding: 0.65rem 1rem;
@@ -106,14 +94,6 @@ def apply_red_blueprint_skin():
         filter: brightness(1.05);
       }
 
-      /* -------- Expanders as panels -------- */
-      div[data-testid="stExpander"] {
-        background: rgba(17,26,46,0.55);
-        border: 1px solid rgba(239,68,68,0.14);
-        border-radius: 16px;
-      }
-
-      /* Reduce top padding a touch */
       .block-container {
         padding-top: 5rem;
       }
@@ -225,9 +205,6 @@ def canonicalize_headers(cols: List[Any]) -> Dict[Any, str]:
         mapping[c] = n
     return mapping
 
-# -----------------------------
-# Auto-header detection
-# -----------------------------
 def find_header_row_index_0_based(file_bytes: bytes, scan_rows: int = 40) -> int:
     bio = io.BytesIO(file_bytes)
     preview = pd.read_excel(bio, header=None, nrows=scan_rows, dtype=object)
@@ -255,38 +232,22 @@ def unit_grid(minutes: float) -> int:
     else:
         m = float(minutes)
 
-    if m <= 7:
-        return 0
-    if m <= 22:
-        return 1
-    if m <= 37:
-        return 2
-    if m <= 52:
-        return 3
-    if m <= 67:
-        return 4
-    if m <= 82:
-        return 5
-    if m <= 97:
-        return 6
-    if m <= 112:
-        return 7
-    if m <= 127:
-        return 8
-    if m <= 142:
-        return 9
-    if m <= 157:
-        return 10
-    if m <= 172:
-        return 11
-    if m <= 187:
-        return 12
-    if m <= 202:
-        return 13
-    if m <= 217:
-        return 14
-    if m <= 232:
-        return 15
+    if m <= 7: return 0
+    if m <= 22: return 1
+    if m <= 37: return 2
+    if m <= 52: return 3
+    if m <= 67: return 4
+    if m <= 82: return 5
+    if m <= 97: return 6
+    if m <= 112: return 7
+    if m <= 127: return 8
+    if m <= 142: return 9
+    if m <= 157: return 10
+    if m <= 172: return 11
+    if m <= 187: return 12
+    if m <= 202: return 13
+    if m <= 217: return 14
+    if m <= 232: return 15
     return 16
 
 def round_minutes_worked(m: float) -> float:
@@ -295,11 +256,7 @@ def round_minutes_worked(m: float) -> float:
 def round_pct(p: float) -> float:
     return round(p, 2)
 
-def compute_pass(
-    hours_worked: float,
-    file_bytes: bytes,
-    audit: Optional[Dict[str, Any]] = None,
-) -> Results:
+def compute_pass(hours_worked: float, file_bytes: bytes, audit: Optional[Dict[str, Any]] = None) -> Results:
     minutes_worked_raw = hours_worked * 60.0
 
     df, header_idx = load_excel_auto_header(file_bytes, dtype=object)
@@ -323,25 +280,16 @@ def compute_pass(
     if invalid:
         raise ValueError("INVALID PROCEDURE CODE(S) FOUND:\n" + "\n".join(invalid))
 
-    non_billable_total = int(
-        df.loc[df["Procedure Code Name"].isin(NON_BILLABLE_FTF_CODES), "Face-to-Face Time"].sum()
-    )
+    non_billable_total = int(df.loc[df["Procedure Code Name"].isin(NON_BILLABLE_FTF_CODES), "Face-to-Face Time"].sum())
     documentation_total = int(df["Documentation Time"].sum())
     travel_total = int(df["Travel Time"].sum())
 
-    minutes_billed = int(
-        df.loc[df["Procedure Code Name"].isin(BILLABLE_FACE_TO_FACE_CODES), "Face-to-Face Time"].sum()
-    )
-
+    minutes_billed = int(df.loc[df["Procedure Code Name"].isin(BILLABLE_FACE_TO_FACE_CODES), "Face-to-Face Time"].sum())
     billable_ftf = df.loc[df["Procedure Code Name"].isin(BILLABLE_FACE_TO_FACE_CODES), "Face-to-Face Time"]
     units_billed = int(billable_ftf.apply(unit_grid).sum())
 
     if minutes_worked_raw == 0:
-        billable_minutes_pct = 0.0
-        billable_units_pct = 0.0
-        non_billable_pct = 0.0
-        documentation_pct = 0.0
-        travel_pct = 0.0
+        billable_minutes_pct = billable_units_pct = non_billable_pct = documentation_pct = travel_pct = 0.0
     else:
         billable_minutes_pct = (minutes_billed / minutes_worked_raw) * 100.0
         billable_units_pct = ((units_billed * 15.0) / minutes_worked_raw) * 100.0
@@ -423,11 +371,12 @@ def compare_results(p1: Results, p2: Results) -> Tuple[bool, List[str]]:
     return (len(mismatches) == 0, mismatches)
 
 # -----------------------------
-# Pie Chart (Vega-Lite, no extra packages)
+# Pie Chart (based on existing computed Results only)
 # -----------------------------
 def render_time_pie(res: Results) -> None:
     total_minutes = float(res.minutes_worked)
 
+    # Use ONLY values already computed by your math engine
     units_minutes = float(res.units_billed) * 15.0
     non_billable_minutes = float(res.non_billable_total)
     travel_minutes = float(res.travel_total)
@@ -451,6 +400,13 @@ def render_time_pie(res: Results) -> None:
             documentation_minutes,
             other_minutes,
         ],
+        "Color": [
+            "#16a34a",
+            "#f97316",
+            "#2563eb",
+            "#eab308",
+            "#dc2626",
+        ],
     })
 
     df = df[df["Minutes"] > 0].copy()
@@ -458,41 +414,27 @@ def render_time_pie(res: Results) -> None:
         st.info("No time data available to chart.")
         return
 
-    domain = [
-        "Units Time",
-        "Non-Billable",
-        "Drive Time",
-        "Documentation",
-        "Other / Unaccounted",
-    ]
-    range_ = [
-        "#16a34a",  # Units - green
-        "#f97316",  # Non-billable - orange
-        "#2563eb",  # Drive - blue
-        "#eab308",  # Documentation - yellow
-        "#dc2626",  # Unaccounted - red
-    ]
+    fig = px.pie(
+        df,
+        names="Category",
+        values="Minutes",
+        hole=0.0,
+    )
 
-    pie_spec = {
-        "mark": {"type": "arc", "outerRadius": 120},
-        "encoding": {
-            "theta": {"field": "Minutes", "type": "quantitative"},
-            "color": {
-                "field": "Category",
-                "type": "nominal",
-                "scale": {"domain": domain, "range": range_},
-                "legend": {"labelColor": "#e6edf3", "titleColor": "#e6edf3"},
-            },
-            "tooltip": [
-                {"field": "Category", "type": "nominal"},
-                {"field": "Minutes", "type": "quantitative"},
-            ],
-        },
-        "view": {"stroke": None},
-        "background": "rgba(0,0,0,0)",
-    }
+    fig.update_traces(
+        marker=dict(colors=df["Color"].tolist()),
+        textinfo="percent+label"
+    )
 
-    st.vega_lite_chart(df, pie_spec, use_container_width=True)
+    fig.update_layout(
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        font=dict(color="#e6edf3"),
+        legend=dict(font=dict(color="#e6edf3")),
+        margin=dict(l=10, r=10, t=10, b=10),
+    )
+
+    st.plotly_chart(fig, use_container_width=True)
 
 # -----------------------------
 # Results Display (Metric Cards + Pie)
@@ -563,7 +505,6 @@ if need_howto == "Yes":
     except FileNotFoundError:
         st.warning("How-To document file not found in the app repo. Tell Mike.")
 
-# Session init
 if "last_result" not in st.session_state:
     st.session_state["last_result"] = None
 if "last_audit_payload" not in st.session_state:
