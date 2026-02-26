@@ -387,43 +387,48 @@ def compare_results(p1: Results, p2: Results) -> Tuple[bool, List[str]]:
 # Pie Chart (based on existing computed Results only)
 # -----------------------------
 def render_time_pie(res: Results) -> None:
-    # Use full-precision minutes for the chart math
     total_minutes = float(res.minutes_worked_raw)
 
-    # Use ONLY values already computed by your math engine
     units_minutes = float(res.units_billed) * 15.0
     non_billable_minutes = float(res.non_billable_total)
     travel_minutes = float(res.travel_total)
     documentation_minutes = float(res.documentation_total)
 
-    accounted_minutes = units_minutes + non_billable_minutes + travel_minutes + documentation_minutes
-    other_minutes = max(0.0, total_minutes - accounted_minutes)
+    accounted_minutes = (
+        units_minutes
+        + non_billable_minutes
+        + travel_minutes
+        + documentation_minutes
+    )
+
+    unaccounted_minutes = max(0.0, total_minutes - accounted_minutes)
 
     df = pd.DataFrame({
-    "Category": [
-        "Units Billed",
-        "Non-Billable",
-        "Drive Time",
-        "Documentation",
-        "Unaccounted Time",
-    ],
-    "Minutes": [
-        units_minutes,
-        non_billable_minutes,
-        travel_minutes,
-        documentation_minutes,
-        other_minutes,
-    ],
-    "Color": [
-        "#16a34a",
-        "#f97316",
-        "#2563eb",
-        "#eab308",
-        "#dc2626",
-    ],
-})
+        "Category": [
+            "Units Billed",
+            "Non-Billable",
+            "Drive Time",
+            "Documentation",
+            "Unaccounted Time",
+        ],
+        "Minutes": [
+            units_minutes,
+            non_billable_minutes,
+            travel_minutes,
+            documentation_minutes,
+            unaccounted_minutes,
+        ],
+        "Color": [
+            "#16a34a",  # Units Billed (green)
+            "#f97316",  # Non-Billable (orange)
+            "#2563eb",  # Drive Time (blue)
+            "#eab308",  # Documentation (yellow)
+            "#dc2626",  # Unaccounted Time (red)
+        ],
+    })
 
     df = df[df["Minutes"] > 0].copy()
+
     if df.empty:
         st.info("No time data available to chart.")
         return
@@ -437,14 +442,15 @@ def render_time_pie(res: Results) -> None:
 
     fig.update_traces(
         marker=dict(colors=df["Color"].tolist()),
-        textinfo="percent+label"
+        textinfo="percent+label",
+        textfont=dict(size=16)
     )
 
     fig.update_layout(
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
-        font=dict(color="#e6edf3"),
-        legend=dict(font=dict(color="#e6edf3")),
+        font=dict(color="#e6edf3", size=16),
+        legend=dict(font=dict(color="#e6edf3", size=16)),
         margin=dict(l=10, r=10, t=10, b=10),
     )
 
