@@ -6,7 +6,6 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import pandas as pd
 import streamlit as st
-import matplotlib.pyplot as plt
 
 # -----------------------------
 # App Config (MUST be first Streamlit call)
@@ -314,7 +313,6 @@ def compute_pass(
             raise ValueError(f"MISSING REQUIRED COLUMN: {col}")
 
     df["Procedure Code Name"] = df["Procedure Code Name"].astype(str).str.strip()
-
     df = df[~df["Procedure Code Name"].str.contains("total", case=False, na=False)].copy()
 
     minute_cols = ["Travel Time", "Documentation Time", "Face-to-Face Time"]
@@ -425,12 +423,11 @@ def compare_results(p1: Results, p2: Results) -> Tuple[bool, List[str]]:
     return (len(mismatches) == 0, mismatches)
 
 # -----------------------------
-# Pie Chart (Uses existing computed Results only)
+# Pie Chart (Vega-Lite, no extra packages)
 # -----------------------------
 def render_time_pie(res: Results) -> None:
     total_minutes = float(res.minutes_worked)
 
-    # Use ONLY values already computed by your math engine
     units_minutes = float(res.units_billed) * 15.0
     non_billable_minutes = float(res.non_billable_total)
     travel_minutes = float(res.travel_total)
@@ -454,13 +451,6 @@ def render_time_pie(res: Results) -> None:
             documentation_minutes,
             other_minutes,
         ],
-        "Color": [
-            "#16a34a",  # Units - green
-            "#f97316",  # Non-billable - orange
-            "#2563eb",  # Drive - blue
-            "#eab308",  # Documentation - yellow
-            "#dc2626",  # Unaccounted - red
-        ]
     })
 
     df = df[df["Minutes"] > 0].copy()
@@ -468,28 +458,41 @@ def render_time_pie(res: Results) -> None:
         st.info("No time data available to chart.")
         return
 
-    fig = px.pie(
-        df,
-        names="Category",
-        values="Minutes",
-        hole=0.0
-    )
+    domain = [
+        "Units Time",
+        "Non-Billable",
+        "Drive Time",
+        "Documentation",
+        "Other / Unaccounted",
+    ]
+    range_ = [
+        "#16a34a",  # Units - green
+        "#f97316",  # Non-billable - orange
+        "#2563eb",  # Drive - blue
+        "#eab308",  # Documentation - yellow
+        "#dc2626",  # Unaccounted - red
+    ]
 
-    # Apply your exact colors
-    fig.update_traces(
-        marker=dict(colors=df["Color"].tolist()),
-        textinfo="percent+label"
-    )
+    pie_spec = {
+        "mark": {"type": "arc", "outerRadius": 120},
+        "encoding": {
+            "theta": {"field": "Minutes", "type": "quantitative"},
+            "color": {
+                "field": "Category",
+                "type": "nominal",
+                "scale": {"domain": domain, "range": range_},
+                "legend": {"labelColor": "#e6edf3", "titleColor": "#e6edf3"},
+            },
+            "tooltip": [
+                {"field": "Category", "type": "nominal"},
+                {"field": "Minutes", "type": "quantitative"},
+            ],
+        },
+        "view": {"stroke": None},
+        "background": "rgba(0,0,0,0)",
+    }
 
-    # Make it match your dark theme
-    fig.update_layout(
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)",
-        font=dict(color="#e6edf3"),
-        legend=dict(font=dict(color="#e6edf3"))
-    )
-
-    st.plotly_chart(fig, use_container_width=True)
+    st.vega_lite_chart(df, pie_spec, use_container_width=True)
 
 # -----------------------------
 # Results Display (Metric Cards + Pie)
