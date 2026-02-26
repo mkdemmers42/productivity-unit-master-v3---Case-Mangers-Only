@@ -155,7 +155,8 @@ TOL_PERCENT = 0.01
 @dataclass(frozen=True)
 class Results:
     hours_worked: float
-    minutes_worked: float
+    minutes_worked_raw: float   # full-precision minutes for internal math
+    minutes_worked: float       # rounded display minutes
     minutes_billed: int
     units_billed: int
     non_billable_total: int
@@ -280,11 +281,12 @@ def compute_pass(hours_worked: float, file_bytes: bytes, audit: Optional[Dict[st
     if invalid:
         raise ValueError("INVALID PROCEDURE CODE(S) FOUND:\n" + "\n".join(invalid))
 
-    non_billable_total = int(df.loc[df["Procedure Code Name"].isin(NON_BILLABLE_FTF_CODES), "Face-to-Face Time"].sum())
-    documentation_total = int(df["Documentation Time"].sum())
-    travel_total = int(df["Travel Time"].sum())
+    # round totals instead of truncating
+    non_billable_total = int(round(df.loc[df["Procedure Code Name"].isin(NON_BILLABLE_FTF_CODES), "Face-to-Face Time"].sum()))
+    documentation_total = int(round(df["Documentation Time"].sum()))
+    travel_total = int(round(df["Travel Time"].sum()))
 
-    minutes_billed = int(df.loc[df["Procedure Code Name"].isin(BILLABLE_FACE_TO_FACE_CODES), "Face-to-Face Time"].sum())
+    minutes_billed = int(round(df.loc[df["Procedure Code Name"].isin(BILLABLE_FACE_TO_FACE_CODES), "Face-to-Face Time"].sum()))
     billable_ftf = df.loc[df["Procedure Code Name"].isin(BILLABLE_FACE_TO_FACE_CODES), "Face-to-Face Time"]
     units_billed = int(billable_ftf.apply(unit_grid).sum())
 
@@ -299,6 +301,7 @@ def compute_pass(hours_worked: float, file_bytes: bytes, audit: Optional[Dict[st
 
     res = Results(
         hours_worked=float(hours_worked),
+        minutes_worked_raw=float(minutes_worked_raw),
         minutes_worked=round_minutes_worked(minutes_worked_raw),
         minutes_billed=minutes_billed,
         units_billed=units_billed,
@@ -343,6 +346,7 @@ def compare_results(p1: Results, p2: Results) -> Tuple[bool, List[str]]:
     if p1.hours_worked != p2.hours_worked:
         mm("Hours_Worked", p1.hours_worked, p2.hours_worked)
 
+    # compare rounded display minutes, plus keep your tolerance
     if abs(p1.minutes_worked - p2.minutes_worked) > TOL_MINUTES_WORKED:
         mm("Minutes_Worked", p1.minutes_worked, p2.minutes_worked)
 
@@ -374,7 +378,8 @@ def compare_results(p1: Results, p2: Results) -> Tuple[bool, List[str]]:
 # Pie Chart (based on existing computed Results only)
 # -----------------------------
 def render_time_pie(res: Results) -> None:
-    total_minutes = float(res.minutes_worked)
+    # Use full-precision minutes for the chart math
+    total_minutes = float(res.minutes_worked_raw)
 
     # Use ONLY values already computed by your math engine
     units_minutes = float(res.units_billed) * 15.0
@@ -443,8 +448,8 @@ def print_final(res: Results) -> None:
     st.success("VERIFICATION PASSED ✅")
 
     c1, c2 = st.columns(2)
-    c1.metric("Hours Worked", f"{res.hours_worked}")
-    c2.metric("Minutes Worked", f"{res.minutes_worked}")
+    c1.metric("Hours Worked", f"{res.hours_worked:.2f}")
+    c2.metric("Minutes Worked", f"{res.minutes_worked:.1f}")
 
     st.markdown("")
 
@@ -590,6 +595,7 @@ if run:
         "pass2": audit2,
         "final": {
             "hours_worked": pass1.hours_worked,
+            "minutes_worked_raw": pass1.minutes_worked_raw,
             "minutes_worked": pass1.minutes_worked,
             "minutes_billed": pass1.minutes_billed,
             "units_billed": pass1.units_billed,
