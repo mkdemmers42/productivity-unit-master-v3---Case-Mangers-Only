@@ -624,7 +624,7 @@ if run:
             "travel_pct": pass1.travel_pct,
         },
     }
-    st.rerun()
+    st.experimental_rerun()
 
 if st.session_state["last_error"]:
     st.error(st.session_state["last_error"])
