@@ -115,12 +115,34 @@ div[data-testid="stMetric"] * {
     padding-top: 5rem;
 }
 
-/* FIX CHECKBOX LABEL TEXT (STRONGER TARGETING) */
-div[data-testid="stCheckbox"] label,
-div[data-testid="stCheckbox"] span {
+/* FIX GENERAL TEXT / LABEL VISIBILITY */
+label,
+p,
+span,
+div[data-testid="stMarkdownContainer"],
+div[data-testid="stWidgetLabel"],
+div[data-testid="stCheckbox"],
+div[data-testid="stRadio"] {
+    color: rgba(255,255,255,0.82) !important;
+    opacity: 1 !important;
+}
+
+/* FIX FORM LABELS ABOVE INPUTS / UPLOADERS */
+div[data-testid="stWidgetLabel"] p,
+div[data-testid="stFileUploader"] label,
+div[data-testid="stTextInput"] label,
+div[data-testid="stRadio"] label,
+div[data-testid="stCheckbox"] label {
     color: rgba(255,255,255,0.88) !important;
     opacity: 1 !important;
-    font-weight: 500;
+    font-weight: 500 !important;
+}
+
+/* FIX INPUT TEXT */
+input,
+textarea {
+    color: #111827 !important;
+    opacity: 1 !important;
 }
 
     </style>
