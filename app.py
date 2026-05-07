@@ -629,6 +629,42 @@ def clean_crosscheck_date(value: Any) -> str:
         return ""
     return dt.strftime("%Y-%m-%d")
 
+    def clean_crosscheck_duration(value: Any) -> str:
+    """Normalize time duration so 30, 30.0, and 00:30 can match."""
+    if value is None or (isinstance(value, float) and math.isnan(value)):
+        return ""
+
+    s = normalize_header(value)
+
+    if s.lower() in {"", "nan", "nat", "none", "time duration", "duration"}:
+        return ""
+
+    # Try timedelta (Excel time format)
+    td = pd.to_timedelta(value, errors="coerce")
+    if not pd.isna(td):
+        return str(int(round(td.total_seconds() / 60.0)))
+
+    # Try numeric minutes
+    try:
+        f = float(s)
+        if math.isfinite(f):
+            return str(int(round(f)))
+    except Exception:
+        pass
+
+    # Try HH:MM format
+    if ":" in s:
+        parts = s.split(":")
+        try:
+            if len(parts) >= 2:
+                hours = int(float(parts[0]))
+                minutes = int(float(parts[1]))
+                return str(hours * 60 + minutes)
+        except Exception:
+            pass
+
+    return s
+
 def build_crosscheck_key_from_clean(clean_id: pd.Series, clean_date: pd.Series) -> pd.Series:
     return clean_id.astype(str).str.strip() + "|" + clean_date.astype(str).str.strip()
 
