@@ -126,27 +126,42 @@ div[data-testid="stRadio"] {
     opacity: 1 !important;
 }
 
-/* FIX FILE UPLOADER BUTTON + HIDDEN UPLOAD TEXT */
+/* FIX FILE UPLOADER BUTTON */
 section[data-testid="stFileUploader"] button {
-    color: #111827 !important;
     background: #ffffff !important;
+    color: #111827 !important;
     opacity: 1 !important;
     font-weight: 700 !important;
-    min-width: 120px !important;
+    width: 150px !important;
+    min-width: 150px !important;
+    height: 42px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    overflow: visible !important;
 }
 
-section[data-testid="stFileUploader"] button * {
-    color: #111827 !important;
+/* Hide Streamlit's stubborn internal faded text */
+section[data-testid="stFileUploader"] button span {
+    display: none !important;
+}
+
+/* Keep the upload icon visible */
+section[data-testid="stFileUploader"] button svg {
+    display: inline-block !important;
     fill: #111827 !important;
-    opacity: 1 !important;
+    color: #111827 !important;
 }
 
-/* Add visible Upload text if Streamlit hides it */
+/* Add our own clean Upload label */
 section[data-testid="stFileUploader"] button::after {
     content: "Upload";
+    display: inline-block !important;
     color: #111827 !important;
+    font-size: 14px !important;
     font-weight: 700 !important;
-    margin-left: 8px;
+    opacity: 1 !important;
 }
 
 /* FIX FORM LABELS ABOVE INPUTS / UPLOADERS */
