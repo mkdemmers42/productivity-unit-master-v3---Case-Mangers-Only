@@ -23,6 +23,12 @@ st.set_page_config(
 # -----------------------------
 def apply_red_blueprint_skin():
     st.markdown("""
+    /* FIX BUTTON TEXT VISIBILITY */
+div.stButton > button {
+    color: white !important;
+    opacity: 1 !important;
+    font-weight: 600;
+}
 <style>
 
 /* Import Modern Font */
