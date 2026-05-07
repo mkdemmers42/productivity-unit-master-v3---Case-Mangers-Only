@@ -677,12 +677,15 @@ def clean_crosscheck_duration(value: Any) -> str:
 def build_crosscheck_key_from_clean(
     clean_id: pd.Series,
     clean_date: pd.Series,
+    clean_procedure: pd.Series,
     clean_duration: pd.Series
 ) -> pd.Series:
     return (
         clean_id.astype(str).str.strip()
         + "|"
         + clean_date.astype(str).str.strip()
+        + "|"
+        + clean_procedure.astype(str).str.strip()
         + "|"
         + clean_duration.astype(str).str.strip()
     )
@@ -737,10 +740,11 @@ def load_sdr_for_crosscheck(file_bytes: bytes) -> pd.DataFrame:
     df["Crosscheck Date"] = sdr_dates.map(clean_crosscheck_date)
     df["Crosscheck Duration"] = sdr_time_durations.map(clean_crosscheck_duration)
     df["Match Key"] = build_crosscheck_key_from_clean(
-        df["Crosscheck ClientId"],
-        df["Crosscheck Date"],
-        df["Crosscheck Duration"]
-    )
+    df["Crosscheck ClientId"],
+    df["Crosscheck Date"],
+    df["Crosscheck Procedure"],
+    df["Crosscheck Duration"]
+)
 
     df["App Units"] = 0
     mask = df["Procedure Code Name"].isin(BILLABLE_FACE_TO_FACE_CODES)
@@ -809,10 +813,11 @@ def load_county_for_crosscheck(file_bytes: bytes) -> pd.DataFrame:
     county["Crosscheck Duration"] = county_time_durations.map(clean_crosscheck_duration)
 
     county["Match Key"] = build_crosscheck_key_from_clean(
-        county["Crosscheck ClientId"],
-        county["Crosscheck Date"],
-        county["Crosscheck Duration"]
-    )
+    county["Crosscheck ClientId"],
+    county["Crosscheck Date"],
+    county["Crosscheck Procedure"],
+    county["Crosscheck Duration"]
+)
 
     county = county[(county["Crosscheck ClientId"] != "") & (county["Crosscheck Date"] != "")].copy()
 
