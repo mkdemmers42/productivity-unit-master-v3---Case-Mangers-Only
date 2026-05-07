@@ -115,9 +115,10 @@ div[data-testid="stMetric"] * {
     padding-top: 5rem;
 }
 
-/* FIX CHECKBOX LABEL TEXT */
-div[data-testid="stCheckbox"] label {
-    color: rgba(255,255,255,0.85) !important;
+/* FIX CHECKBOX LABEL TEXT (STRONGER TARGETING) */
+div[data-testid="stCheckbox"] label,
+div[data-testid="stCheckbox"] span {
+    color: rgba(255,255,255,0.88) !important;
     opacity: 1 !important;
     font-weight: 500;
 }
