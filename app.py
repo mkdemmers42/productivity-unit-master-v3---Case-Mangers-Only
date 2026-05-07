@@ -690,9 +690,9 @@ def load_sdr_for_crosscheck(file_bytes: bytes) -> pd.DataFrame:
 
 def load_county_for_crosscheck(file_bytes: bytes) -> pd.DataFrame:
     """
-    County positional matching rule from Mike:
-    - County Client ID is Column A (0-based index 0)
-    - County Date of Service is Column L (0-based index 11)
+    # County positional matching rule from Mike:
+    # - County Client ID is Column D (0-based index 3)
+    # - County Date of Service is Column O (0-based index 14)
 
     Column names, spacing, dots, and headers are intentionally ignored for matching.
     """
@@ -712,8 +712,8 @@ def load_county_for_crosscheck(file_bytes: bytes) -> pd.DataFrame:
     else:
         raw_data = raw_data.iloc[:len(county)].reset_index(drop=True).copy()
 
-    county_ids = raw_data.iloc[:, 0]
-    county_dates = raw_data.iloc[:, 11].ffill()
+    county_ids = raw_data.iloc[:, 3]
+    county_dates = raw_data.iloc[:, 14].ffill()
 
     proc_col = find_first_existing_col(county, ["ProcedureCodeName", "Procedure Code Name"])
     units_col = find_first_existing_col(county, ["Charge Units", "ChargeUnits", "Units"])
@@ -815,7 +815,7 @@ def run_county_crosscheck(sdr_file_bytes: bytes, county_file_bytes: bytes) -> Di
 def render_county_crosscheck_report(report: Dict[str, Any]) -> None:
     st.markdown("---")
     st.markdown("### County Cross-Check Mode")
-    st.info("This compares the files by the exact position rule: County Column A + Column L must match SDR Column C + Column B. Headers, spaces, dots, minutes, units, and procedure wording are ignored for matching.")
+    st.info("This compares the files by the exact position rule: County Column D + Column O must match SDR Column C + Column B.")
 
     c1, c2, c3 = st.columns(3)
     c1.metric("SDR Rows", report.get("submitted_row_count", 0))
