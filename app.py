@@ -782,6 +782,12 @@ def run_county_crosscheck(sdr_file_bytes: bytes, county_file_bytes: bytes) -> Di
     adjusted = matched_rows[matched_rows["Unit Difference"] != 0].copy()
     missing = matched[matched["_merge"] == "left_only"].copy()
 
+# REMOVE non-billable noise from missing list
+missing = missing[~missing["Procedure Code Name"].isin([
+    "Non-billable Attempted Contact",
+    "Client Non Billable Srvc Must Document"
+])]
+
     show_cols = [
         "Crosscheck Date", "Crosscheck ClientId", "Procedure Code Name", "Crosscheck Procedure", "County Procedure",
         "Face-to-Face Time", "App Units", "County Minutes", "County Charge Units", "Unit Difference"
