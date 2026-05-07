@@ -24,8 +24,6 @@ def apply_red_blueprint_skin():st.markdown("""
 
 apply_red_blueprint_skin()
 
-st.markdown("""
-
 -----------------------------
 
 MASTER v3 Configuration (Case Manager)
