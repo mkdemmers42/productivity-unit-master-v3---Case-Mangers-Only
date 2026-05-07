@@ -126,9 +126,11 @@ div[data-testid="stRadio"] {
     opacity: 1 !important;
 }
 
-/* FIX FILE UPLOADER BUTTON TEXT */
-section[data-testid="stFileUploader"] button {
+/* FIX FILE UPLOADER BUTTON + TEXT */
+section[data-testid="stFileUploader"] button,
+section[data-testid="stFileUploader"] button * {
     color: #111827 !important;
+    fill: #111827 !important;
     font-weight: 600;
 }
 
