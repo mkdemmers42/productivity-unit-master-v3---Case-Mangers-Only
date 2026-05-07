@@ -23,12 +23,7 @@ st.set_page_config(
 # -----------------------------
 def apply_red_blueprint_skin():
     st.markdown("""
-    /* FIX BUTTON TEXT VISIBILITY */
-div.stButton > button {
-    color: white !important;
-    opacity: 1 !important;
-    font-weight: 600;
-}
+
 <style>
 
 /* Import Modern Font */
@@ -96,16 +91,28 @@ html, body, [class*="css"]  {
         padding: 10px 10px 6px 10px;
       }
 
-      .stButton > button {
+            .stButton > button {
         border-radius: 14px;
         padding: 0.65rem 1rem;
-        border: 1px solid rgba(239,68,68,0.38);
-        background: linear-gradient(180deg, rgba(239,68,68,0.22), rgba(17,26,46,0.80));
-        color: #e6edf3;
+        border: 1px solid rgba(239,68,68,0.65) !important;
+        background: #dc2626 !important;
+        color: #ffffff !important;
+        opacity: 1 !important;
+        font-weight: 700 !important;
         box-shadow: 0 10px 22px rgba(0,0,0,0.35);
       }
+
+      .stButton > button * {
+        color: #ffffff !important;
+        opacity: 1 !important;
+        font-weight: 700 !important;
+      }
+
       .stButton > button:hover {
-        border: 1px solid rgba(239,68,68,0.58);
+        border: 1px solid rgba(248,113,113,0.95) !important;
+        background: #ef4444 !important;
+        color: #ffffff !important;
+        opacity: 1 !important;
         filter: brightness(1.05);
       }
 
