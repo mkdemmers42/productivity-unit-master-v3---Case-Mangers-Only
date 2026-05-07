@@ -780,7 +780,7 @@ def run_county_crosscheck(sdr_file_bytes: bytes, county_file_bytes: bytes) -> Di
     matched_rows = matched[matched["_merge"] == "both"].copy()
     exact = matched_rows[matched_rows["Unit Difference"] == 0].copy()
     adjusted = matched_rows[matched_rows["Unit Difference"] != 0].copy()
-        missing = matched[matched["_merge"] == "left_only"].copy()
+    missing = matched[matched["_merge"] == "left_only"].copy()
 
     # REMOVE non-billable noise from missing list
     missing = missing[~missing["Procedure Code Name"].isin([
