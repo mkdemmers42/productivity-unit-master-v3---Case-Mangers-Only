@@ -115,16 +115,21 @@ div[data-testid="stMetric"] * {
     padding-top: 5rem;
 }
 
-/* FIX GENERAL TEXT / LABEL VISIBILITY */
+/* FIX GENERAL TEXT (BUT NOT BUTTONS) */
 label,
 p,
-span,
 div[data-testid="stMarkdownContainer"],
 div[data-testid="stWidgetLabel"],
 div[data-testid="stCheckbox"],
 div[data-testid="stRadio"] {
     color: rgba(255,255,255,0.82) !important;
     opacity: 1 !important;
+}
+
+/* FIX FILE UPLOADER BUTTON TEXT */
+section[data-testid="stFileUploader"] button {
+    color: #111827 !important;
+    font-weight: 600;
 }
 
 /* FIX FORM LABELS ABOVE INPUTS / UPLOADERS */
