@@ -629,7 +629,7 @@ def clean_crosscheck_date(value: Any) -> str:
         return ""
     return dt.strftime("%Y-%m-%d")
 
-    def clean_crosscheck_duration(value: Any) -> str:
+def clean_crosscheck_duration(value: Any) -> str:
         """Normalize time duration so 30, 30.0, and 00:30 can match."""
         if value is None or (isinstance(value, float) and math.isnan(value)):
             return ""
@@ -663,7 +663,7 @@ def clean_crosscheck_date(value: Any) -> str:
             except Exception:
                 pass
 
-        return s
+        return s    
 
 def build_crosscheck_key_from_clean(clean_id: pd.Series, clean_date: pd.Series) -> pd.Series:
     return clean_id.astype(str).str.strip() + "|" + clean_date.astype(str).str.strip()
