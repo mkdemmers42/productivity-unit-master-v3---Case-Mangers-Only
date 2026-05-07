@@ -38,7 +38,8 @@ NON_BILLABLE_FTF_CODES = {"Non-billable Attempted Contact","Client Non Billable 
 
 REQUIRED_COLS_CANONICAL = ["Procedure Code Name","Travel Time","Documentation Time","Face-to-Face Time",]
 
-TOL_MINUTES_WORKED = 0.1TOL_PERCENT = 0.01
+TOL_MINUTES_WORKED = 0.1
+TOL_PERCENT = 0.01
 
 -----------------------------
 
