@@ -686,6 +686,12 @@ def load_sdr_for_crosscheck(file_bytes: bytes) -> pd.DataFrame:
 
     # Remove junk positional rows that do not have both key pieces.
     df = df[(df["Crosscheck ClientId"] != "") & (df["Crosscheck Date"] != "")].copy()
+
+    # County Cross-Check should compare billable/unit-producing SDR rows only.
+    # Non-billables are still counted in the main app/audit mode, but ignored here.
+    df = df[~df["Procedure Code Name"].isin(NON_BILLABLE_FTF_CODES)].copy()
+    df = df[df["App Units"] > 0].copy()
+
     return df
 
 def load_county_for_crosscheck(file_bytes: bytes) -> pd.DataFrame:
@@ -739,6 +745,16 @@ def load_county_for_crosscheck(file_bytes: bytes) -> pd.DataFrame:
     county["Match Key"] = build_crosscheck_key_from_clean(county["Crosscheck ClientId"], county["Crosscheck Date"])
 
     county = county[(county["Crosscheck ClientId"] != "") & (county["Crosscheck Date"] != "")].copy()
+
+    # County Cross-Check should compare billable/unit-producing county rows only.
+    # Ignore any county-side non-billable rows before matching.
+    county = county[~county["Crosscheck Procedure"].isin([
+        "Non-billable Attempted Contact",
+        "Client Non Billable Srvc Must Document"
+    ])].copy()
+
+    county = county[county["County Charge Units"] > 0].copy()
+
     return county
 
 def run_county_crosscheck(sdr_file_bytes: bytes, county_file_bytes: bytes) -> Dict[str, Any]:
