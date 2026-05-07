@@ -126,12 +126,27 @@ div[data-testid="stRadio"] {
     opacity: 1 !important;
 }
 
-/* FIX FILE UPLOADER BUTTON + TEXT */
-section[data-testid="stFileUploader"] button,
+/* FIX FILE UPLOADER BUTTON + HIDDEN UPLOAD TEXT */
+section[data-testid="stFileUploader"] button {
+    color: #111827 !important;
+    background: #ffffff !important;
+    opacity: 1 !important;
+    font-weight: 700 !important;
+    min-width: 120px !important;
+}
+
 section[data-testid="stFileUploader"] button * {
     color: #111827 !important;
     fill: #111827 !important;
-    font-weight: 600;
+    opacity: 1 !important;
+}
+
+/* Add visible Upload text if Streamlit hides it */
+section[data-testid="stFileUploader"] button::after {
+    content: "Upload";
+    color: #111827 !important;
+    font-weight: 700 !important;
+    margin-left: 8px;
 }
 
 /* FIX FORM LABELS ABOVE INPUTS / UPLOADERS */
