@@ -122,7 +122,7 @@ div[data-testid="stMarkdownContainer"],
 div[data-testid="stWidgetLabel"],
 div[data-testid="stCheckbox"],
 div[data-testid="stRadio"] {
-    color: rgba(255,255,255,0.82) !important;
+    color: rgba(226,232,240,0.80) !important;
     opacity: 1 !important;
 }
 
