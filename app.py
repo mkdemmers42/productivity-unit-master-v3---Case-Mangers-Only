@@ -748,12 +748,12 @@ def run_county_crosscheck(sdr_file_bytes: bytes, county_file_bytes: bytes) -> Di
     # Big-picture totals by procedure code. This is informational only.
     app_summary = (
         sdr.groupby("Crosscheck Procedure", dropna=False)
-        .agg(SDR Rows=("Crosscheck Procedure", "size"), SDR Minutes=("Face-to-Face Time", "sum"), SDR Units=("App Units", "sum"))
+        .agg(SDR_Rows=("Crosscheck Procedure", "size"), SDR_Minutes=("Face-to-Face Time", "sum"), SDR_Units=("App Units", "sum"))
         .reset_index()
     )
     county_summary = (
         county.groupby("Crosscheck Procedure", dropna=False)
-        .agg(County Rows=("Crosscheck Procedure", "size"), County Minutes=("County Minutes", "sum"), County Charge_Units=("County Charge Units", "sum"))
+        .agg(County_Rows=("Crosscheck Procedure", "size"), County_Minutes=("County Minutes", "sum"), County_Charge_Units=("County Charge Units", "sum"))
         .reset_index()
     )
     summary = app_summary.merge(county_summary, on="Crosscheck Procedure", how="outer").fillna(0)
