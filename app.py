@@ -73,13 +73,20 @@ html, body, [class*="css"]  {
         color: rgba(254,202,202,0.95);
       }
 
-      div[data-testid="stMetric"] {
-        background: rgba(17,26,46,0.78);
-        border: 1px solid rgba(239,68,68,0.18);
-        border-radius: 18px;
-        padding: 14px 14px;
-        box-shadow: 0 10px 24px rgba(0,0,0,0.30);
-      }
+    div[data-testid="stMetric"] {
+    background: rgba(17,26,46,0.90);
+    border: 1px solid rgba(239,68,68,0.25);
+    border-radius: 18px;
+    padding: 14px 14px;
+    box-shadow: 0 10px 24px rgba(0,0,0,0.30);
+}
+
+/* FIX TEXT INSIDE METRIC CARDS */
+div[data-testid="stMetric"] * {
+    color: #ffffff !important;
+    opacity: 1 !important;
+    font-weight: 600;
+}
 
       div[data-testid="stFileUploader"],
       div[data-testid="stSelectbox"],
