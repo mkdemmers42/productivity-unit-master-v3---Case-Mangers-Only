@@ -122,7 +122,6 @@ div[data-testid="stCheckbox"] label {
     font-weight: 500;
 }
 
-</style>
     </style>
     """, unsafe_allow_html=True)
 
