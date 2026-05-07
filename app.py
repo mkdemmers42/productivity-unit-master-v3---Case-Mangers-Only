@@ -581,25 +581,34 @@ def find_first_existing_col(df: pd.DataFrame, candidates: List[str]) -> Optional
 def normalize_proc_for_crosscheck(value: Any) -> str:
     s = normalize_header(value).lower()
     s = s.replace("–", "-").replace("—", "-")
+    s = " ".join(s.split())
 
-    if s in {"psychosocial rehab - individual", "psychosocial rehabilitation", "psychosocial rehab individual"}:
-        return "Psychosocial Rehab - Individual"
-    if s in {"psychosocial rehabilitation group", "psychosocial rehab group"}:
-        return "Psychosocial Rehabilitation Group"
-    if s in {"tcm/icc", "targeted case management", "targeted case management/icc"}:
+    if s in {"tcm/icc", "targeted case management"}:
         return "TCM/ICC"
-    if s in {"non-billable attempted contact", "non billable attempted contact"}:
-        return "Non-billable Attempted Contact"
-    if s in {"client non billable srvc must document", "client non-billable srvc must document"}:
-        return "Client Non Billable Srvc Must Document"
-    if s == "crisis intervention":
-        return "Crisis Intervention"
-    if s in {"plan development, non-physician", "plan development non-physician"}:
+
+    if s in {"psychosocial rehab - individual", "psychosocial rehabilitation"}:
+        return "Psychosocial Rehab - Individual"
+
+    if s in {
+        "plan development, non-physician",
+        "mental health service plan developed by non-physician",
+    }:
         return "Plan Development, non-physician"
-    if s == "brief contact note":
-        return "Brief Contact Note"
-    if s == "targeted outreach":
-        return "Targeted Outreach"
+
+    if s in {"psychosocial rehabilitation group"}:
+        return "Psychosocial Rehabilitation Group"
+
+    if s in {"crisis intervention", "crisis intervention services"}:
+        return "Crisis Intervention"
+
+    if s in {
+        "non-billable attempted contact",
+        "non billable attempted contact",
+        "client non billable srvc must document",
+        "client non-billable srvc must document",
+    }:
+        return "IGNORE_NON_BILLABLE"
+
     return normalize_header(value)
 
 def clean_crosscheck_id(value: Any) -> str:
@@ -809,10 +818,7 @@ def load_county_for_crosscheck(file_bytes: bytes) -> pd.DataFrame:
 
     # County Cross-Check should compare billable/unit-producing county rows only.
     # Ignore any county-side non-billable rows before matching.
-    county = county[~county["Crosscheck Procedure"].isin([
-        "Non-billable Attempted Contact",
-        "Client Non Billable Srvc Must Document"
-    ])].copy()
+    county = county[county["Crosscheck Procedure"] != "IGNORE_NON_BILLABLE"].copy()
 
     county = county[county["County Charge Units"] > 0].copy()
 
