@@ -665,8 +665,18 @@ def clean_crosscheck_duration(value: Any) -> str:
 
         return s    
 
-def build_crosscheck_key_from_clean(clean_id: pd.Series, clean_date: pd.Series) -> pd.Series:
-    return clean_id.astype(str).str.strip() + "|" + clean_date.astype(str).str.strip()
+def build_crosscheck_key_from_clean(
+    clean_id: pd.Series,
+    clean_date: pd.Series,
+    clean_duration: pd.Series
+) -> pd.Series:
+    return (
+        clean_id.astype(str).str.strip()
+        + "|"
+        + clean_date.astype(str).str.strip()
+        + "|"
+        + clean_duration.astype(str).str.strip()
+    )
 
 def load_sdr_for_crosscheck(file_bytes: bytes) -> pd.DataFrame:
     """
@@ -709,6 +719,7 @@ def load_sdr_for_crosscheck(file_bytes: bytes) -> pd.DataFrame:
     raw_data = raw_data.loc[df.index].reset_index(drop=True)
     sdr_dates = sdr_dates.loc[df.index].reset_index(drop=True)
     sdr_client_ids = sdr_client_ids.loc[df.index].reset_index(drop=True)
+    sdr_time_durations = sdr_time_durations.loc[df.index].reset_index(drop=True)
     df = df.reset_index(drop=True)
 
     df["Face-to-Face Time"] = pd.to_numeric(df["Face-to-Face Time"], errors="coerce").fillna(0)
@@ -784,7 +795,15 @@ def load_county_for_crosscheck(file_bytes: bytes) -> pd.DataFrame:
 
     county["Crosscheck ClientId"] = county_ids.map(clean_crosscheck_id)
     county["Crosscheck Date"] = county_dates.map(clean_crosscheck_date)
-    county["Match Key"] = build_crosscheck_key_from_clean(county["Crosscheck ClientId"], county["Crosscheck Date"])
+    county_time_durations = raw_data.iloc[:, 23]
+
+    county["Crosscheck Duration"] = county_time_durations.map(clean_crosscheck_duration)
+
+    county["Match Key"] = build_crosscheck_key_from_clean(
+        county["Crosscheck ClientId"],
+        county["Crosscheck Date"],
+        county["Crosscheck Duration"]
+    )
 
     county = county[(county["Crosscheck ClientId"] != "") & (county["Crosscheck Date"] != "")].copy()
 
