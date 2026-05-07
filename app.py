@@ -748,7 +748,9 @@ def run_county_crosscheck(sdr_file_bytes: bytes, county_file_bytes: bytes) -> Di
     # Big-picture totals by procedure code. This is informational only.
     app_summary = (
         sdr.groupby("Crosscheck Procedure", dropna=False)
-        .agg(App_Rows=("Crosscheck Procedure", "size"), App_Minutes=("Face-to-Face Time", "sum"), App_Units=("App Units", "sum"))
+        .agg(SDR_Rows=("Crosscheck Procedure", "size"), 
+             SDR_Minutes=("Face-to-Face Time", "sum"), 
+             SDR_Units=("App Units", "sum"))
         .reset_index()
     )
     county_summary = (
@@ -757,7 +759,10 @@ def run_county_crosscheck(sdr_file_bytes: bytes, county_file_bytes: bytes) -> Di
         .reset_index()
     )
     summary = app_summary.merge(county_summary, on="Crosscheck Procedure", how="outer").fillna(0)
-    summary["Unit Difference"] = summary["App_Units"] - summary["County_Charge_Units"]
+    summary = summary.rename(columns={
+    "County_Charge_Units": "County Units"
+    })
+    summary["Unit Difference"] = summary["SDR_Units"] - summary["County Units"]
     summary = summary.sort_values("Crosscheck Procedure")
 
     # Exact positional matching rule: County Column A + Column L against SDR Column C + Column B.
