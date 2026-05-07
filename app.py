@@ -639,40 +639,42 @@ def clean_crosscheck_date(value: Any) -> str:
     return dt.strftime("%Y-%m-%d")
 
 def clean_crosscheck_duration(value: Any) -> str:
-        """Normalize time duration so 30, 30.0, and 00:30 can match."""
-        if value is None or (isinstance(value, float) and math.isnan(value)):
-            return ""
+    """Normalize time duration so 30, 30.0, and 00:30 can match."""
+    if value is None or (isinstance(value, float) and math.isnan(value)):
+        return ""
 
-        s = normalize_header(value)
+    s = normalize_header(value)
 
-        if s.lower() in {"", "nan", "nat", "none", "time duration", "duration"}:
-            return ""
+    if s.lower() in {"", "nan", "nat", "none", "time duration", "duration"}:
+        return ""
 
-        # Try timedelta (Excel time format)
-        td = pd.to_timedelta(value, errors="coerce")
-        if not pd.isna(td):
-            return str(int(round(td.total_seconds() / 60.0)))
+    # IMPORTANT:
+    # If duration is stored as a plain number, treat it as minutes FIRST.
+    # Do this before pd.to_timedelta because pd.to_timedelta(68) treats 68 as nanoseconds.
+    try:
+        f = float(s)
+        if math.isfinite(f):
+            return str(int(round(f)))
+    except Exception:
+        pass
 
-        # Try numeric minutes
+    # If duration is stored like HH:MM or H:MM.
+    if ":" in s:
+        parts = s.split(":")
         try:
-            f = float(s)
-            if math.isfinite(f):
-                return str(int(round(f)))
+            if len(parts) >= 2:
+                hours = int(float(parts[0]))
+                minutes = int(float(parts[1]))
+                return str(hours * 60 + minutes)
         except Exception:
             pass
 
-        # Try HH:MM format
-        if ":" in s:
-            parts = s.split(":")
-            try:
-                if len(parts) >= 2:
-                    hours = int(float(parts[0]))
-                    minutes = int(float(parts[1]))
-                    return str(hours * 60 + minutes)
-            except Exception:
-                pass
+    # Last resort for true timedelta-like values.
+    td = pd.to_timedelta(value, errors="coerce")
+    if not pd.isna(td):
+        return str(int(round(td.total_seconds() / 60.0)))
 
-        return s    
+    return s
 
 def build_crosscheck_key_from_clean(
     clean_id: pd.Series,
