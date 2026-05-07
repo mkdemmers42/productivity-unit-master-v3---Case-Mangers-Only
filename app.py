@@ -517,209 +517,6 @@ def render_time_pie(res: Results) -> None:
 
     st.plotly_chart(fig, use_container_width=True)
 
-
-
-# -----------------------------
-# County Cross-Check Helpers
-# -----------------------------
-def find_first_existing_col(df: pd.DataFrame, candidates: List[str]) -> Optional[str]:
-    normalized_lookup = {normalize_header(c).lower(): c for c in df.columns}
-    for candidate in candidates:
-        key = normalize_header(candidate).lower()
-        if key in normalized_lookup:
-            return normalized_lookup[key]
-    return None
-
-def normalize_proc_for_crosscheck(value: Any) -> str:
-    s = normalize_header(value).lower()
-    s = s.replace("–", "-").replace("—", "-")
-
-    if s in {"psychosocial rehab - individual", "psychosocial rehabilitation", "psychosocial rehab individual"}:
-        return "Psychosocial Rehab - Individual"
-    if s in {"psychosocial rehabilitation group", "psychosocial rehab group"}:
-        return "Psychosocial Rehabilitation Group"
-    if s in {"tcm/icc", "targeted case management", "targeted case management/icc"}:
-        return "TCM/ICC"
-    if s in {"non-billable attempted contact", "non billable attempted contact"}:
-        return "Non-billable Attempted Contact"
-    if s in {"client non billable srvc must document", "client non-billable srvc must document"}:
-        return "Client Non Billable Srvc Must Document"
-    if s == "crisis intervention":
-        return "Crisis Intervention"
-    if s in {"plan development, non-physician", "plan development non-physician"}:
-        return "Plan Development, non-physician"
-    if s == "brief contact note":
-        return "Brief Contact Note"
-    if s == "targeted outreach":
-        return "Targeted Outreach"
-    return normalize_header(value)
-
-def load_sdr_for_crosscheck(file_bytes: bytes) -> pd.DataFrame:
-    df, _ = load_excel_auto_header(file_bytes, dtype=object)
-    df = df.rename(columns=canonicalize_headers(list(df.columns)))
-
-    if "Procedure Code Name" not in df.columns or "Face-to-Face Time" not in df.columns:
-        raise ValueError("SDR cross-check needs Procedure Code Name and Face-to-Face Time.")
-
-    df["Procedure Code Name"] = df["Procedure Code Name"].astype(str).str.strip()
-    df = df[~df["Procedure Code Name"].str.contains("total", case=False, na=False)].copy()
-    df["Face-to-Face Time"] = pd.to_numeric(df["Face-to-Face Time"], errors="coerce").fillna(0)
-    df["Crosscheck Procedure"] = df["Procedure Code Name"].apply(normalize_proc_for_crosscheck)
-    df["App Units"] = 0
-    mask = df["Procedure Code Name"].isin(BILLABLE_FACE_TO_FACE_CODES)
-    df.loc[mask, "App Units"] = df.loc[mask, "Face-to-Face Time"].apply(unit_grid).astype(int)
-
-    date_col = find_first_existing_col(df, ["DateOfService", "Date of Service", "Service Date", "DOS", "Date"])
-    client_col = find_first_existing_col(df, ["ClientId", "Client ID", "Client or Group Name", "ClientName", "Client Name"])
-    if date_col:
-        df["Crosscheck Date"] = pd.to_datetime(df[date_col], errors="coerce").dt.strftime("%Y-%m-%d")
-    else:
-        df["Crosscheck Date"] = ""
-    if client_col:
-        df["Crosscheck Client"] = df[client_col].astype(str).map(normalize_header)
-    else:
-        df["Crosscheck Client"] = ""
-
-    return df
-
-def load_county_for_crosscheck(file_bytes: bytes) -> pd.DataFrame:
-    county = pd.read_excel(io.BytesIO(file_bytes), dtype=object)
-    county.columns = [normalize_header(c) for c in county.columns]
-
-    proc_col = find_first_existing_col(county, ["ProcedureCodeName", "Procedure Code Name"])
-    units_col = find_first_existing_col(county, ["Charge Units", "ChargeUnits", "Units"])
-    minutes_col = find_first_existing_col(county, ["Minutes", "Minutes2"])
-    date_col = find_first_existing_col(county, ["DateOfService", "Date of Service", "DOS"])
-    client_col = find_first_existing_col(county, ["ClientId", "Client ID", "ClientName", "Client Name"])
-
-    missing = []
-    if not proc_col: missing.append("ProcedureCodeName")
-    if not units_col: missing.append("Charge Units")
-    if not minutes_col: missing.append("Minutes")
-    if missing:
-        raise ValueError("County file is missing required column(s): " + ", ".join(missing))
-
-    county["Crosscheck Procedure"] = county[proc_col].apply(normalize_proc_for_crosscheck)
-    county["County Charge Units"] = pd.to_numeric(county[units_col], errors="coerce").fillna(0)
-    county["County Minutes"] = pd.to_numeric(county[minutes_col], errors="coerce").fillna(0)
-    if date_col:
-        county["Crosscheck Date"] = pd.to_datetime(county[date_col], errors="coerce").dt.strftime("%Y-%m-%d")
-    else:
-        county["Crosscheck Date"] = ""
-    if client_col:
-        county["Crosscheck Client"] = county[client_col].astype(str).map(normalize_header)
-    else:
-        county["Crosscheck Client"] = ""
-
-    return county
-
-def build_match_key(df: pd.DataFrame, use_client: bool) -> pd.Series:
-    parts = [
-        df["Crosscheck Date"].astype(str),
-        df["Crosscheck Procedure"].astype(str),
-    ]
-    if use_client:
-        parts.append(df["Crosscheck Client"].astype(str))
-    # Rounded minutes makes the match less brittle when Excel stores 55.0 vs 55
-    minute_col = "Face-to-Face Time" if "Face-to-Face Time" in df.columns else "County Minutes"
-    parts.append(pd.to_numeric(df[minute_col], errors="coerce").fillna(0).round(0).astype(int).astype(str))
-    key = parts[0]
-    for part in parts[1:]:
-        key = key + "|" + part
-    return key
-
-def run_county_crosscheck(sdr_file_bytes: bytes, county_file_bytes: bytes) -> Dict[str, Any]:
-    sdr = load_sdr_for_crosscheck(sdr_file_bytes)
-    county = load_county_for_crosscheck(county_file_bytes)
-
-    # Compare totals by procedure code first. This is the most reliable view.
-    app_summary = (
-        sdr.groupby("Crosscheck Procedure", dropna=False)
-        .agg(App_Rows=("Crosscheck Procedure", "size"), App_Minutes=("Face-to-Face Time", "sum"), App_Units=("App Units", "sum"))
-        .reset_index()
-    )
-    county_summary = (
-        county.groupby("Crosscheck Procedure", dropna=False)
-        .agg(County_Rows=("Crosscheck Procedure", "size"), County_Minutes=("County Minutes", "sum"), County_Charge_Units=("County Charge Units", "sum"))
-        .reset_index()
-    )
-    summary = app_summary.merge(county_summary, on="Crosscheck Procedure", how="outer").fillna(0)
-    summary["Unit Difference"] = summary["App_Units"] - summary["County_Charge_Units"]
-    summary = summary.sort_values("Crosscheck Procedure")
-
-    # Best-effort row matching. Uses client only if both files have a usable client field.
-    use_client = bool((sdr["Crosscheck Client"].astype(str).str.len() > 0).any() and (county["Crosscheck Client"].astype(str).str.len() > 0).any())
-    can_match_rows = bool((sdr["Crosscheck Date"].astype(str).str.len() > 0).any() and (county["Crosscheck Date"].astype(str).str.len() > 0).any())
-
-    unmatched = pd.DataFrame()
-    accepted_count = 0
-    if can_match_rows:
-        sdr = sdr.copy()
-        county = county.copy()
-        sdr["Match Key"] = build_match_key(sdr, use_client=use_client)
-        county["Match Key"] = build_match_key(county, use_client=use_client)
-        sdr["Match Occurrence"] = sdr.groupby("Match Key").cumcount()
-        county["Match Occurrence"] = county.groupby("Match Key").cumcount()
-
-        matched = sdr.merge(
-            county[["Match Key", "Match Occurrence", "County Charge Units"]],
-            on=["Match Key", "Match Occurrence"],
-            how="left",
-            indicator=True,
-        )
-        accepted_count = int((matched["_merge"] == "both").sum())
-        unmatched = matched[matched["_merge"] == "left_only"].copy()
-
-    show_cols = [
-        "Crosscheck Date", "Crosscheck Client", "Procedure Code Name", "Crosscheck Procedure",
-        "Face-to-Face Time", "App Units"
-    ]
-    show_cols = [c for c in show_cols if c in unmatched.columns]
-
-    return {
-        "summary": summary.round(2),
-        "unmatched": unmatched[show_cols].round(2) if not unmatched.empty else unmatched,
-        "can_match_rows": can_match_rows,
-        "used_client_in_match": use_client,
-        "accepted_row_count": accepted_count,
-        "submitted_row_count": int(len(sdr)),
-        "county_row_count": int(len(county)),
-    }
-
-def render_county_crosscheck_report(report: Dict[str, Any]) -> None:
-    st.markdown("---")
-    st.markdown("### County Cross-Check Mode")
-    st.info("This compares the SDR submitted services against the county billed/accepted file. Use this only when the county file is available.")
-
-    c1, c2, c3 = st.columns(3)
-    c1.metric("SDR Rows", report.get("submitted_row_count", 0))
-    c2.metric("County Rows", report.get("county_row_count", 0))
-    c3.metric("Matched Rows", report.get("accepted_row_count", 0))
-
-    st.markdown("#### Side-by-Side by Procedure")
-    st.dataframe(report["summary"], use_container_width=True, hide_index=True)
-
-    if not report.get("can_match_rows"):
-        st.warning("Row-level matching was limited because date columns were not available in both files. The procedure summary above is still useful.")
-        return
-
-    if not report.get("used_client_in_match"):
-        st.warning("Row-level matching used Date + Procedure + Minutes only because client fields did not match across both files. Treat row-level results as best effort.")
-
-    unmatched = report.get("unmatched")
-    st.markdown("#### Submitted SDR Rows Not Found in County File")
-    if unmatched is None or unmatched.empty:
-        st.success("No unmatched SDR rows found with the available matching fields.")
-    else:
-        st.dataframe(unmatched, use_container_width=True, hide_index=True)
-        st.download_button(
-            "Download Not Found Rows CSV",
-            data=unmatched.to_csv(index=False).encode("utf-8"),
-            file_name="sdr_rows_not_found_in_county.csv",
-            mime="text/csv",
-        )
-
-
 # -----------------------------
 # Results Display (Metric Cards + Pie)
 # -----------------------------
@@ -853,11 +650,8 @@ if "last_result" not in st.session_state:
     st.session_state["last_result"] = None
 if "last_audit_payload" not in st.session_state:
     st.session_state["last_audit_payload"] = None
-if "last_crosscheck_report" not in st.session_state:
-    st.session_state["last_crosscheck_report"] = None
 if "last_error" not in st.session_state:
     st.session_state["last_error"] = None
-    st.session_state["last_crosscheck_report"] = None
 if "reset_counter" not in st.session_state:
     st.session_state["reset_counter"] = 0
 
@@ -865,13 +659,11 @@ def do_reset() -> None:
     st.session_state["reset_counter"] += 1
     st.session_state["last_result"] = None
     st.session_state["last_audit_payload"] = None
-    st.session_state["last_crosscheck_report"] = None
     st.session_state["last_error"] = None
 
 k = st.session_state["reset_counter"]
 hours_key = f"hours_{k}"
 file_key = f"uploaded_file_{k}"
-county_file_key = f"county_file_{k}"
 
 hours = st.text_input("Please insert **Hours Worked**", placeholder="Example: 148.13", key=hours_key)
 
@@ -895,20 +687,6 @@ if audit_mode:
     county_productivity_input = st.text_input(
         "Optional: Enter county-reported productivity % for comparison",
         placeholder="Example: 42.81"
-    )
-
-county_crosscheck_mode = st.checkbox(
-    "County Cross-Check Mode — compare SDR to county billed file",
-    value=False,
-    help="Optional. Use only when the county productivity/billed file is available."
-)
-
-county_uploaded = None
-if county_crosscheck_mode:
-    county_uploaded = st.file_uploader(
-        "Optional: Upload the county productivity/billed Excel file for cross-check",
-        type=["xlsx"],
-        key=county_file_key
     )
 
 col_run, col_reset = st.columns([1, 1])
@@ -981,12 +759,6 @@ if run:
             "travel_pct": pass1.travel_pct,
         },
     }
-    if county_crosscheck_mode and county_uploaded is not None:
-        try:
-            st.session_state["last_crosscheck_report"] = run_county_crosscheck(file_bytes, county_uploaded.getvalue())
-        except Exception as e:
-            fail(f"COUNTY CROSS-CHECK FAILED: {e}")
-
     st.rerun()
 
 if st.session_state["last_error"]:
@@ -1004,9 +776,6 @@ if st.session_state["last_result"] is not None:
 
     if audit_mode and st.session_state["last_audit_payload"] is not None:
         render_audit_mode(st.session_state["last_audit_payload"], county_productivity=county_productivity_value)
-
-    if st.session_state.get("last_crosscheck_report") is not None:
-        render_county_crosscheck_report(st.session_state["last_crosscheck_report"])
 
     if st.session_state["last_audit_payload"] is not None:
         st.download_button(
