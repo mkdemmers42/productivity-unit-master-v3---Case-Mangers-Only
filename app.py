@@ -664,6 +664,7 @@ def load_sdr_for_crosscheck(file_bytes: bytes) -> pd.DataFrame:
     # We do not use names, procedure wording, minutes, units, punctuation, or headers for matching.
     sdr_dates = raw_data.iloc[:, 1].ffill()
     sdr_client_ids = raw_data.iloc[:, 2]
+    sdr_time_durations = raw_data.iloc[:, 12]
 
     df["Procedure Code Name"] = df["Procedure Code Name"].astype(str).str.strip()
     df = df[~df["Procedure Code Name"].str.contains("total", case=False, na=False)].copy()
@@ -678,7 +679,12 @@ def load_sdr_for_crosscheck(file_bytes: bytes) -> pd.DataFrame:
     df["Crosscheck Procedure"] = df["Procedure Code Name"].apply(normalize_proc_for_crosscheck)
     df["Crosscheck ClientId"] = sdr_client_ids.map(clean_crosscheck_id)
     df["Crosscheck Date"] = sdr_dates.map(clean_crosscheck_date)
-    df["Match Key"] = build_crosscheck_key_from_clean(df["Crosscheck ClientId"], df["Crosscheck Date"])
+    df["Crosscheck Duration"] = sdr_time_durations.map(clean_crosscheck_duration)
+    df["Match Key"] = build_crosscheck_key_from_clean(
+        df["Crosscheck ClientId"],
+        df["Crosscheck Date"],
+        df["Crosscheck Duration"]
+    )
 
     df["App Units"] = 0
     mask = df["Procedure Code Name"].isin(BILLABLE_FACE_TO_FACE_CODES)
@@ -703,8 +709,8 @@ def load_county_for_crosscheck(file_bytes: bytes) -> pd.DataFrame:
     Column names, spacing, dots, and headers are intentionally ignored for matching.
     """
     raw = pd.read_excel(io.BytesIO(file_bytes), header=None, dtype=object)
-    if raw.shape[1] < 12:
-        raise ValueError("County cross-check needs at least columns A through L.")
+    if raw.shape[1] < 24:
+        raise ValueError("County cross-check needs at least columns D through X.")
 
     # Also load the county file with headers for optional units/procedure display.
     county_named = pd.read_excel(io.BytesIO(file_bytes), dtype=object)
