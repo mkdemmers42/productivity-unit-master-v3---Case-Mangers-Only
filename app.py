@@ -111,9 +111,18 @@ div[data-testid="stMetric"] * {
         filter: brightness(1.05);
       }
 
-      .block-container {
-        padding-top: 5rem;
-      }
+    .block-container {
+    padding-top: 5rem;
+}
+
+/* FIX CHECKBOX LABEL TEXT */
+div[data-testid="stCheckbox"] label {
+    color: rgba(255,255,255,0.85) !important;
+    opacity: 1 !important;
+    font-weight: 500;
+}
+
+</style>
     </style>
     """, unsafe_allow_html=True)
 
